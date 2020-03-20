@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/idcpj/rpcx_jaeger/lib"
 	"github.com/smallnest/rpcx/client"
 	"log"
@@ -9,7 +10,7 @@ import (
 )
 
 func main() {
-	closer := lib.InitJaeger("rpc2")
+	closer := lib.InitJaeger("rpc3")
 	defer closer.Close()
 
 	addrs := []string{"127.0.0.1:8972"}
@@ -26,26 +27,32 @@ func main() {
 }
 
 func rpcx2(xclient client.XClient) {
-	span, ctx, err := lib.GenerateSpanWithContext(context.Background(), "first2")
+	span, carrier, err := lib.GenerateSpanWithContext("first2", "")
 	if err != nil {
 		panic(err)
 	}
 	defer span.Finish()
 
 	time.Sleep(1 * time.Second)
-	type Args struct {
-		N, M int
-	}
-	type Res struct {
-		Cal int
-	}
 
-	args := Args{7, 8}
-	res := Res{}
+	args := lib.Args{7, 8, carrier}
+	res := lib.Res{}
 
-	err = xclient.Call(ctx, "Multiply", &args, &res)
+	err = xclient.Call(context.Background(), "Multiply", &args, &res)
 	if err != nil {
 		log.Fatalf("failed to call: %v", err)
 	}
-	log.Printf("%+v", res)
+
+	fuc3(res)
+}
+
+func fuc3(res lib.Res) {
+	span, _, err := lib.GenerateSpanWithContext("first2", res.Carrier)
+	if err != nil {
+		panic(err)
+	}
+	defer span.Finish()
+
+	time.Sleep(1 * time.Second)
+	fmt.Printf("%+v\n", res.Cal)
 }
